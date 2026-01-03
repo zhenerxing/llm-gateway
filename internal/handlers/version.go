@@ -11,6 +11,7 @@ type Response struct{
 }
 
 func Version(c *gin.Context){
+	// 返回JSON
 	c.JSON(http.StatusOK,Response{
 		Code:200,
 		Msg:"sucesss",
