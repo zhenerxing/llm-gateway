@@ -1,13 +1,12 @@
 package main
 
-import(
-	"log"
-	"os"
+import "github.com/zhenerxing/llm-gateway/internal/server"
 
-	"github.com/gin-gonic/gin"
-)
 
 func main(){
+	// 只保留启动入口i
+	server.Run()
+	/*
 	r := gin.New()
 
 	r.GET("/healthz",func(c *gin.Context){
@@ -23,4 +22,5 @@ func main(){
 	if err := r.Run(addr); err != nil{
 		log.Fatal(err)
 	}
+	*/
 }
