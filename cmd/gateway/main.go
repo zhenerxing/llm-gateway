@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/zhenerxing/llm-gateway/internal/server"
+	"github.com/zhenerxing/llm-gateway/internal/http/server"
 	"log"
 )
 func main(){

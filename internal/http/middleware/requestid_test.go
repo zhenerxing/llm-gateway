@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"github.com/zhenerxing/llm-gateway/internal/handlers"
+	"github.com/zhenerxing/llm-gateway/internal/http/handler"
 	
 	"github.com/gin-gonic/gin"
 )
@@ -16,7 +16,7 @@ func TestRequestID(t *testing.T){
 	r := gin.New()
 
 	r.Use(RequestIDMiddleware())
-	r.GET("healthz",handlers.Healthz)
+	r.GET("healthz",handler.Healthz)
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet,"/healthz",nil)
