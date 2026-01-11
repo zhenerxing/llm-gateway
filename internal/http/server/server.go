@@ -28,12 +28,13 @@ func Run()  error {
 			Active:   true,
 		},
 	})
+	svc := auth.PointerService(store)
 
 
 
 	// 将http的具体信息交给router去解析分发
 	// 同时使用logger将日志结构传入router中
-	r:= Router(logger,store)
+	r:= Router(logger,store,svc)
 
 	// 解析地址，如果没有给出地址，则默认8080
 	addr := ":8080"
