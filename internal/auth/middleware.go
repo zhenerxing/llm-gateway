@@ -13,6 +13,7 @@ const (
 	CtxKeyTenantID = "tenant_id"
 	CtxKeyAPIKey = "api_key"
 )
+
 // Middleware 校验 X-API-Key
 // - 缺少： 401
 // - 不存在/不激活/过期：401

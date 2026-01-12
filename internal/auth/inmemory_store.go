@@ -22,7 +22,7 @@ func NewInMemoryKeyStore(seed map[string]KeyInfo) *InMemoryStore{
 	return &InMemoryStore{data : cp}
 }
 
-// 对InMemoryStore Struct实现了TypeStore接口
+// 对InMemoryStore Struct实现了KeyStore接口
 
 // 作用是通过原子操作，将传入的apikey对应的KeyInfo返回，如果不存在则通过bool体现
 func (s *InMemoryStore) Get(apiKey string) (KeyInfo,bool) {
@@ -41,6 +41,8 @@ type KeyInfo struct {
 	ExpiresAt *time.Time
 }
 */
+
+//key store接口的Create操作，作用是接收管理员传入的 新的keyinfo信息，创建key，并且将新的key存入到map中（后续是数据库中）
 func (s *InMemoryStore) Create(info KeyInfo) error{
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -55,6 +57,7 @@ func (s *InMemoryStore) Create(info KeyInfo) error{
 
 }
 
+// 返回map（数据库）中所有的key
 func (s *InMemoryStore) List()([]KeyInfo,error){
 	s.mu.RLock()
 	defer s.mu.RUnlock()

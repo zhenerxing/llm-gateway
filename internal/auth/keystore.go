@@ -4,6 +4,7 @@ import (
 	"time"
 )
 
+// Quota占位，暂时还没有派上用场，先写着
 type Quota struct{
 	DailyRequests int `json:"quota_daily_requests"`
 	DailyTokens int `json:"quota_daily_tokens"`

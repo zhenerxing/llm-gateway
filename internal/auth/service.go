@@ -9,16 +9,19 @@ import (
 	"github.com/google/uuid"
 )
 
+// Service 必须存东西，不关心东西存在哪里，只关心是否实现了Keystore的方法
 type Service struct{
 	store KeyStore
 }
 
+// 将store KeyStore指针化为Service
 func PointerService(store KeyStore) *Service{
 	return &Service{store: store}
 }
 
+// 创建key的输入，包含租户id和quota
 type CreateKeyInput struct{
-	TenantID string `json:"tenant_id"`
+	TenantID  string `json:"tenant_id"`
 	Quota 	  Quota `json:"quota"`
 }
 /*
@@ -28,6 +31,7 @@ type Quota struct{
 }
 */
 
+// 创建key的输出，一般来说只返回一次key
 type CreateKeyOutput struct{
 	KeyInfo
 }
@@ -42,6 +46,7 @@ type KeyInfo struct {
 }
 */
 
+// 在auth service 时，报错的规范，后续应该整合到error.go里面
 type AppError struct {
 	Code 	   string
 	HTTPStatus int
@@ -50,8 +55,10 @@ type AppError struct {
 	Cause      error 
 }
 
+// 只关心报错代码和报错信息时的报错函数
 func (e *AppError) Error() string {return e.Code + ": " + e.Message}
 
+// 
 func BadRequest(code,msg string, fields map[string]any) *AppError {
 	return &AppError{
 		Code:code,
@@ -61,6 +68,10 @@ func BadRequest(code,msg string, fields map[string]any) *AppError {
 	}
 }
 
+// 创建key服务，主要目的是实现接口和数据的分离，通过service类，进行依赖注入
+// 在数据传入的时候，在这个函数中统一封装为 KeyInfo（无Key），然后传入到keystore接口的create方法中
+// 不关心在接口中存入了什么样的数据结构，接收create方法返回的KeyInfo（有key）
+// 返回生成的KeyInfo
 func (s *Service) CreateKey (input CreateKeyInput) (*CreateKeyOutput,error){
 	tenant := strings.TrimSpace(input.TenantID)
 	if tenant == ""{
@@ -112,6 +123,7 @@ func (s *Service) CreateKey (input CreateKeyInput) (*CreateKeyOutput,error){
 
 }
 
+// 接收从接口中返回的list，将key清空，正面key存在，但不将其暴露
 
 func (s *Service) ListKeys()([]KeyInfo,error){
 	recs, err := s.store.List()

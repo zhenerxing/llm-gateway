@@ -6,7 +6,9 @@ import(
 
 	"github.com/gin-gonic/gin"
 )
+//管理员认证，设在中间层，持有令牌的人才可以入内
 func AdminAuthMiddleware()gin.HandlerFunc{
+	// 获取令牌
 	adminToken := os.Getenv("ADMIN_TOKEN")
 	if adminToken == ""{
 		adminToken = "dev-admin-token" //先设置一个默认值
