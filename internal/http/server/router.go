@@ -9,11 +9,13 @@ import(
 
 	"github.com/zhenerxing/llm-gateway/internal/auth"
 
+	"github.com/zhenerxing/llm-gateway/internal/audit"
+
 	"go.uber.org/zap"
 
 )
 
-func Router(logger *zap.Logger,store auth.KeyStore, authSvc *auth.Service) *gin.Engine {
+func Router(logger *zap.Logger,store auth.KeyStore, authSvc *auth.Service, auditStore audit.AuditStore) *gin.Engine {
 	// 启动引擎，不包含日志和报错
 	r:= gin.New()
 	
@@ -28,13 +30,21 @@ func Router(logger *zap.Logger,store auth.KeyStore, authSvc *auth.Service) *gin.
 	{
 		admin.POST("/keys", adminKeys.Create)
 		admin.GET("/keys", adminKeys.List)
+		auditH := &handler.AuditHandler{Store: auditStore}
+		admin.GET("/audit", auditH.Get)
 	}
+		
 
-	// 将具体的任务分发给handlers
-	r.GET("/version",handler.Version)
-	r.GET("/healthz",handler.Healthz)
+	// public
+	r.GET("/version", handler.Version)
+	r.GET("/healthz", handler.Healthz)
 
-	r.POST("/chat",auth.AuthMiddleware(store),handler.Chat)
-	
+	// 业务 API：这里保证 Auth 在 Audit 之前
+	api := r.Group("/")
+	api.Use(auth.AuthMiddleware(store))
+	api.Use(middleware.AuditMiddleware(auditStore))
+	{
+		api.POST("/chat", handler.Chat)
+	}
 	return r
 }

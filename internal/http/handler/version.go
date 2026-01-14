@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 type Response struct{
-	Code int	`json:"code"` // 业务码，0或200表示成功，其余表示失败
+	Code int	     `json:"code"` // 业务码，0或200表示成功，其余表示失败
 	Msg  string      `json:"msg"` // 提示信息
 	Data interface{} `json:"data"` // 数据，使用 interface{} 以便接收任意类型
 }
