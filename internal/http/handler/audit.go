@@ -8,10 +8,12 @@ import (
 	"github.com/zhenerxing/llm-gateway/internal/audit"
 )
 
+// 面向接口的编程，这样以后就算数据层变了，也不影响执行层的操作
 type AuditHandler struct{
 	Store audit.AuditStore
 }
 
+// 现有的业务函数，查询
 func (h *AuditHandler) Get(c *gin.Context){
 	tenantID := c.Query("tenant_id")
 	if tenantID == "" {

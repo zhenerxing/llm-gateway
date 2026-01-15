@@ -6,18 +6,21 @@ import(
 	"time"
 )
 
+// 使用接口编程，后续就算数据层进行更换也不会影响http层和业务层
+// 也就是说，别的层，只能见到这个接口，初始化，增加查询都是从这里来
 type AuditStore interface{
 	InitSchema(ctx context.Context) error
 	Insert(ctx context.Context, r AuditInfo) error
 	Query(ctx context.Context, TenantID, from, to string, limit int) ([]AuditInfo, error)
 }
 
+// 使用sql存储数据
 type SQLiteStore struct{
 	DB *sql.DB
 }
 
 
-
+// 初始化数据库
 func (s *SQLiteStore) InitSchema(ctx context.Context) error{
 	schema := `
 	CREATE TABLE IF NOT EXISTS audit_log(

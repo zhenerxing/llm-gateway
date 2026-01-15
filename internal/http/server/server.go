@@ -34,7 +34,7 @@ func Run()  error {
 	})
 	svc := auth.PointerService(store)
 
-	// 1) SQLite 路径（建议可配置）
+	// 1) SQLite 路径
 	dbPath := os.Getenv("SQLITE_PATH")
 	if dbPath == "" {
 		dbPath = "./data/audit.db"
