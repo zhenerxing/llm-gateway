@@ -7,6 +7,7 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+	"github.com/zhenerxing/llm-gateway/internal/apperr"
 )
 
 // Service 必须存东西，不关心东西存在哪里，只关心是否实现了Keystore的方法
@@ -58,6 +59,8 @@ type AppError struct {
 // 只关心报错代码和报错信息时的报错函数
 func (e *AppError) Error() string {return e.Code + ": " + e.Message}
 
+func (e *AppError) Unwrap() error { return e.Cause }
+
 // 
 func BadRequest(code,msg string, fields map[string]any) *AppError {
 	return &AppError{
@@ -75,20 +78,20 @@ func BadRequest(code,msg string, fields map[string]any) *AppError {
 func (s *Service) CreateKey (input CreateKeyInput) (*CreateKeyOutput,error){
 	tenant := strings.TrimSpace(input.TenantID)
 	if tenant == ""{
-		return nil,BadRequest(
-			"TENANT_ID_REQUIRED",
-			"tenant_id is required",
-			map[string]any{"tenant_id": "required"},
-		)
+		return nil, apperr.New(
+            apperr.PLATFORM_REQUEST_INVALID,
+            apperr.TypePlatform,
+            "tenant_id is required",
+        ).WithDetails(map[string]any{"tenant_id": "required"})
 	}
 	mrk,mrk_err := MustRandKey(32)
 	if mrk_err != nil{
-		return nil,&AppError{
-			Code:       "panic",
-			HTTPStatus: 400,
-			Message:    "random key not generated",
-			Cause:      mrk_err,
-		}
+		return nil, apperr.Wrap(
+            apperr.PLATFORM_INTERNAL_ERROR,
+            apperr.TypePlatform,
+            "random key not generated",
+            mrk_err,
+        )
 	}
 	apikey := "gw_" + mrk
 	rec := KeyInfo{
@@ -104,20 +107,20 @@ func (s *Service) CreateKey (input CreateKeyInput) (*CreateKeyOutput,error){
 	if err := s.store.Create(rec);err != nil{
 		// 例：已存在 -> 409
 		if errors.Is(err, ErrAlreadyExists) {
-			return nil, &AppError{
-				Code:       "ALREADY_EXISTS",
-				HTTPStatus: 409,
-				Message:    "key already exists",
-				Cause:      err,
-			}
+			return nil, apperr.Wrap(
+                apperr.PLATFORM_CONFLICT,
+                apperr.TypePlatform,
+                "key already exists",
+                err,
+            )
 		}
 		// 其他错误 -> 500
-		return nil, &AppError{
-			Code:       "INTERNAL",
-			HTTPStatus: 500,
-			Message:    "internal server error",
-			Cause:      err,
-		}
+		return nil, apperr.Wrap(
+            apperr.PLATFORM_INTERNAL_ERROR,
+            apperr.TypePlatform,
+            "internal server error",
+            err,
+        )
 	}
 	return &CreateKeyOutput{KeyInfo: rec},nil
 

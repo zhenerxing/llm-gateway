@@ -20,8 +20,9 @@ func Router(logger *zap.Logger,store auth.KeyStore, authSvc *auth.Service, audit
 	r:= gin.New()
 	
 	r.Use(middleware.RequestIDMiddleware())
-	r.Use(gin.Recovery())
 	r.Use(middleware.LoggingMiddleware(logger))
+	r.Use(middleware.ErrorHandler(logger))
+	// r.Use(gin.Recovery()) //增加了errorhandler，避免 panic 被它提前处理
 
 	adminKeys := handler.PointerAdminKeysHandler(authSvc)
 
