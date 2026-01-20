@@ -43,29 +43,53 @@ make lint
 
 ```text
 llm-gateway/
-├─ cmd/
-│  └─ gateway/
-│     └─ main.go              # 程序入口：初始化配置/日志并启动 HTTP 服务
-├─ internal/
-│  ├─ handlers/
-│  │  ├─ healthz.go           # 健康检查接口（health check）
-│  │  └─ version.go           # 版本信息接口（build/version 信息）
-│  ├─ middleware/
-│  │  ├─ requestid.go         # RequestID 中间件：为每个请求注入/传递请求 ID
-│  │  └─ logging.go           # 访问日志中间件：请求/响应日志记录
-│  └─ server/
-│     ├─ server.go            # HTTP Server 生命周期管理（启动/关闭等）
-│     └─ router.go            # 路由注册与 Gin 引擎初始化
-├─ pkg/
-│  └─ logger/
-│     └─ logger.go            # 日志封装：基于 zap 的统一日志初始化与使用
-├─ .github/
-│  └─ workflows/
-│     └─ ci.yml               # GitHub Actions CI：构建/测试/检查流程
-├─ go.mod                     # Go module 定义与依赖版本
-├─ go.sum                     # 依赖校验和（由 Go 自动维护）
-├─ Makefile                   # 常用命令封装（build/test/lint/run 等）
-└─ README.md                  # 项目文档
+├── Makefile
+├── README.md
+├── cmd
+│   └── gateway
+│       └── main.go # 程序入口：初始化配置/日志并启动 HTTP 服务
+├── data
+│   └── audit.db
+├── go.mod
+├── go.sum
+├── internal
+│   ├── apperr
+│   │   ├── apperr.go
+│   │   ├── codes.go
+│   │   └── httpmap.go
+│   ├── audit
+│   │   ├── model.go
+│   │   └── store_sqlite.go
+│   ├── auth
+│   │   ├── error.go
+│   │   ├── inmemory_store.go
+│   │   ├── keystore.go
+│   │   ├── middleware.go
+│   │   └── service.go
+│   └── http
+│       ├── handler
+│       │   ├── admin_key.go
+│       │   ├── audit.go
+│       │   ├── chat.go
+│       │   ├── healthz.go
+│       │   ├── healthz_test.go
+│       │   ├── version.go
+│       │   └── version_test.go
+│       ├── middleware
+│       │   ├── admin_auth.go
+│       │   ├── audit.go
+│       │   ├── error_handler.go
+│       │   ├── logging.go
+│       │   ├── requestid.go
+│       │   └── requestid_test.go
+│       └── server
+│           ├── router.go
+│           └── server.go
+└── pkg
+    ├── logger
+    │   └── logger.go
+    └── response
+        └── response.go
 
 创建key：
 curl -sS -X POST 'http://localhost:8080/admin/keys' \
@@ -83,3 +107,73 @@ curl -sS -X POST 'http://localhost:8080/chat' \
   -H 'Content-Type: application/json' \
   -H "X-API-Key: ${API_KEY}" \
   -d '{"message":"hi"}'
+
+
+## 错误码（Error Codes）
+
+本服务所有失败响应均使用统一结构：
+
+```json
+{
+  "error": {
+    "code": "PLATFORM_REQUEST_INVALID",
+    "message": "tenant_id is required",
+    "type": "platform",
+    "retry_after": 0,
+    "details": { "tenant_id": "required" },
+    "request_id": "7f6c8a0056d1c86dc0dfa7583e3ccb1f"
+  }
+}
+```
+
+字段说明：
+
+- `code`：稳定的错误码（用于程序判断与告警聚合）
+- `message`：面向调用方的简要说明（不保证稳定，勿做强依赖）
+- `type`：
+  - `platform`：平台自身错误（参数、鉴权、内部错误等）
+  - `upstream`：上游/依赖服务错误（模型服务、第三方 API 等）
+- `retry_after`：建议重试等待秒数；`0` 表示未设置
+- `details`：可选的结构化信息（字段校验错误、上下文信息等）
+- `request_id`：请求追踪 ID（用于排查日志）
+
+---
+
+## 平台侧错误（Type = `platform`）
+
+| code | HTTP | 含义 | 客户端建议 |
+|---|---:|---|---|
+| `PLATFORM_REQUEST_INVALID` | 400 | 请求参数/JSON 不合法、缺字段、格式错误 | 修正请求后重试 |
+| `PLATFORM_AUTH_MISSING_API_KEY` | 401 | 缺少 API Key | 补充 API Key 后重试 |
+| `PLATFORM_AUTH_INVALID_API_KEY` | 401 | API Key 无效/不存在/已被禁用 | 更换有效 Key |
+| `PLATFORM_AUTH_FORBIDDEN` | 403 | 权限不足（例如非管理员访问管理接口） | 换有权限的凭证/联系管理员 |
+| `PLATFORM_CONFLICT` | 409 | 资源冲突（例如重复创建） | 修改请求或先查询现有资源 |
+| `PLATFORM_DEPENDENCY_UNAVAILABLE` | 503 | 平台依赖不可用（DB、缓存等） | 可稍后重试；如有 `retry_after` 按其等待 |
+| `PLATFORM_INTERNAL_ERROR` | 500 | 平台内部错误 | 可重试；持续发生请带 `request_id` 反馈 |
+
+> 说明：`PLATFORM_CONFLICT` 需要在代码常量中定义（如果还未定义请补上）。
+
+---
+
+## 上游侧错误（Type = `upstream`）
+
+| code | HTTP | 含义 | 客户端建议 |
+|---|---:|---|---|
+| `UPSTREAM_TIMEOUT` | 504 | 上游请求超时 | 可重试；必要时降低超时/换模型 |
+| `UPSTREAM_UNAVAILABLE` | 502 | 上游不可用或返回异常 | 可重试；持续发生请切换上游 |
+
+---
+
+## 重试策略建议（通用）
+
+- 遇到 `503/502/504`：建议指数退避重试（如 1s, 2s, 4s…），若响应包含 `retry_after` 优先遵循。
+- 遇到 `400/401/403/409`：通常不建议盲目重试，应先修正请求/凭证/权限/冲突条件。
+
+---
+
+## 错误码兼容性承诺
+
+- `code`：稳定字段，新增不破坏既有语义。
+- `message/details`：用于人类排查，可能随版本调整；客户端不应依赖具体文案或 details 的 key。
+
+---
