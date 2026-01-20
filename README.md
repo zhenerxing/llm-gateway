@@ -66,3 +66,20 @@ llm-gateway/
 ├─ go.sum                     # 依赖校验和（由 Go 自动维护）
 ├─ Makefile                   # 常用命令封装（build/test/lint/run 等）
 └─ README.md                  # 项目文档
+
+创建key：
+curl -sS -X POST 'http://localhost:8080/admin/keys' \
+  -H 'Content-Type: application/json' \
+  -H 'X-Admin-Token: dev-admin-token' \
+  -d '{"tenant_id":"acme","quota_daily_requests":1000,"quota_daily_tokens":200000}'
+
+列出key：
+curl -sS 'http://localhost:8080/admin/keys' \
+  -H 'X-Admin-Token: dev-admin-token'
+export API_KEY='...'
+
+调用：
+curl -sS -X POST 'http://localhost:8080/chat' \
+  -H 'Content-Type: application/json' \
+  -H "X-API-Key: ${API_KEY}" \
+  -d '{"message":"hi"}'
